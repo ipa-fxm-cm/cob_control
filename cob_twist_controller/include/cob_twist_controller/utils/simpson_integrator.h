@@ -45,8 +45,8 @@ class SimpsonIntegrator
             for (uint8_t i = 0; i < dof_; i++)
             {
                 // ma_.push_back(new MovingAvgSimple_double_t(3));
-                ma_measured_vel_.push_back(new MovingAvgExponential_double_t(0.6));
-                ma_measured_pos_.push_back(new MovingAvgExponential_double_t(0.6));
+                ma_measured_vel_.push_back(new MovingAvgExponential_double_t(0.4));
+                ma_measured_pos_.push_back(new MovingAvgExponential_double_t(0.4));
             }
 
             last_update_time_ = ros::Time(0.0);
@@ -85,6 +85,8 @@ class SimpsonIntegrator
             bool value_valid = false;
             pos.clear();
             vel.clear();
+            pos_filtered.clear();
+            vel_filtered.clear();
 
             // ToDo: Test these conditions and find good thresholds
             // if (period.toSec() > 2*last_period_.toSec())  // missed about a cycle
@@ -105,7 +107,7 @@ class SimpsonIntegrator
 
                 if (ma_measured_vel_[i]->calcMovingAverage(filtered_q_dot_ik))
                 {
-                    vel.push_back(filtered_q_dot_ik);
+                    vel_filtered.push_back(filtered_q_dot_ik);
                 }
 
                 if (ma_measured_pos_[i]->calcMovingAverage(filtered_q_ik))
@@ -119,9 +121,10 @@ class SimpsonIntegrator
                 for (unsigned int i = 0; i < dof_; ++i)
                 {
                     // Simpson
-                    double integration_value = static_cast<double>(period.toSec() / 6.0 * (vel_before_last_[i] + 4.0 * (vel_before_last_[i] + vel_last_[i]) + vel_before_last_[i] + vel_last_[i] + vel[i]) + pos_filtered[i]);
+                    double integration_value = static_cast<double>(period.toSec() / 6.0 * (vel_before_last_[i] + 4.0 * (vel_before_last_[i] + vel_last_[i]) + vel_before_last_[i] + vel_last_[i] + vel_filtered[i]) + pos_filtered[i]);
 
                     pos.push_back(integration_value);
+                    vel.push_back(vel_filtered[i]);
 
                 }
                 value_valid = true;
@@ -135,9 +138,9 @@ class SimpsonIntegrator
             }
 
             vel_last_.clear();
-            for (unsigned int i=0; i < vel.size(); ++i)
+            for (unsigned int i=0; i < vel_filtered.size(); ++i)
             {
-                vel_last_.push_back(vel[i]);
+                vel_last_.push_back(vel_filtered[i]);
             }
 
             last_update_time_ = now;
