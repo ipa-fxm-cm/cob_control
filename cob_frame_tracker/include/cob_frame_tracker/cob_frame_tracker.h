@@ -43,6 +43,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <cob_frame_tracker/FrameTrackerConfig.h>
 #include <cob_frame_tracker/FrameTrackingAction.h>
+#include <cob_frame_tracker/moving_average.h>
 
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
@@ -191,6 +192,9 @@ private:
 
     unsigned int abortion_counter_;
     unsigned int max_abortions_;
+
+    std::vector<MovingAvgBase_double_t*> ma_;
+
 };
 
 #endif

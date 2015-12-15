@@ -47,6 +47,7 @@ class SimpsonIntegrator
                 // ma_.push_back(new MovingAvgSimple_double_t(3));
                 ma_measured_vel_.push_back(new MovingAvgExponential_double_t(0.4));
                 ma_measured_pos_.push_back(new MovingAvgExponential_double_t(0.4));
+                ma_output_pos_.push_back(new MovingAvgExponential_double_t(1));
             }
 
             last_update_time_ = ros::Time(0.0);
@@ -67,6 +68,7 @@ class SimpsonIntegrator
             {
                 ma_measured_vel_[i]->reset();
                 ma_measured_pos_[i]->reset();
+                ma_output_pos_[i]->reset();
             }
 
         }
@@ -120,12 +122,17 @@ class SimpsonIntegrator
             {
                 for (unsigned int i = 0; i < dof_; ++i)
                 {
+                    double filtered_integration_value;
                     // Simpson
                     double integration_value = static_cast<double>(period.toSec() / 6.0 * (vel_before_last_[i] + 4.0 * (vel_before_last_[i] + vel_last_[i]) + vel_before_last_[i] + vel_last_[i] + vel_filtered[i]) + pos_filtered[i]);
 
-                    pos.push_back(integration_value);
-                    vel.push_back(vel_filtered[i]);
+                    ma_output_pos_[i]->addElement(integration_value);
 
+                    if (ma_output_pos_[i]->calcMovingAverage(filtered_integration_value))
+                    {
+                        pos.push_back(filtered_integration_value);
+                    }
+                    vel.push_back(vel_filtered[i]);
                 }
                 value_valid = true;
             }
@@ -152,6 +159,8 @@ class SimpsonIntegrator
     private:
         std::vector<MovingAvgBase_double_t*> ma_measured_vel_;
         std::vector<MovingAvgBase_double_t*> ma_measured_pos_;
+        std::vector<MovingAvgBase_double_t*> ma_output_pos_;
+
         uint8_t dof_;
         std::vector<double> vel_last_, vel_before_last_;
         ros::Time last_update_time_;

@@ -176,6 +176,11 @@ bool CobFrameTracker::initialize()
     timer_ = nh_.createTimer(ros::Duration(1/update_rate_), &CobFrameTracker::run, this);
     timer_.start();
 
+    for (uint8_t i = 0; i < 6; i++)
+    {
+        ma_.push_back(new MovingAvgExponential_double_t(0.7));
+    }
+
     return true;
 }
 
@@ -238,6 +243,10 @@ bool CobFrameTracker::getTransform(const std::string& from, const std::string& t
 
 void CobFrameTracker::publishZeroTwist()
 {
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        ma_[i]->reset();
+    }
     //publish zero Twist for stopping
     geometry_msgs::TwistStamped twist_msg;
     twist_msg.header.frame_id = tracking_frame_;
@@ -261,9 +270,9 @@ void CobFrameTracker::publishTwist(ros::Duration period, bool do_publish)
 
     if(movable_trans_)
     {
-        twist_msg.twist.linear.x = pid_controller_trans_x_.computeCommand(transform_tf.getOrigin().x(), period);
-        twist_msg.twist.linear.y = pid_controller_trans_y_.computeCommand(transform_tf.getOrigin().y(), period);
-        twist_msg.twist.linear.z = pid_controller_trans_z_.computeCommand(transform_tf.getOrigin().z(), period);
+        ma_[0]->addElement(pid_controller_trans_x_.computeCommand(transform_tf.getOrigin().x(), period));
+        ma_[1]->addElement(pid_controller_trans_y_.computeCommand(transform_tf.getOrigin().y(), period));
+        ma_[2]->addElement(pid_controller_trans_z_.computeCommand(transform_tf.getOrigin().z(), period));
     }
 
     if(movable_rot_)
@@ -271,9 +280,23 @@ void CobFrameTracker::publishTwist(ros::Duration period, bool do_publish)
         ///ToDo: Consider angular error as RPY or Quaternion?
         ///ToDo: What to do about sign conversion (pi->-pi) in angular rotation?
 
-        twist_msg.twist.angular.x = pid_controller_rot_x_.computeCommand(transform_tf.getRotation().x(), period);
-        twist_msg.twist.angular.y = pid_controller_rot_y_.computeCommand(transform_tf.getRotation().y(), period);
-        twist_msg.twist.angular.z = pid_controller_rot_z_.computeCommand(transform_tf.getRotation().z(), period);
+        ma_[3]->addElement(pid_controller_rot_x_.computeCommand(transform_tf.getRotation().x(), period));
+        ma_[4]->addElement(pid_controller_rot_y_.computeCommand(transform_tf.getRotation().y(), period));
+        ma_[5]->addElement(pid_controller_rot_z_.computeCommand(transform_tf.getRotation().z(), period));
+    }
+
+    double avg_linear_x,avg_linear_y,avg_linear_z;
+    double avg_angular_x,avg_angular_y,avg_angular_z;
+
+    if(ma_[0]->calcMovingAverage(avg_linear_x) && ma_[1]->calcMovingAverage(avg_linear_y) && ma_[2]->calcMovingAverage(avg_linear_z) &&
+       ma_[3]->calcMovingAverage(avg_angular_x) && ma_[4]->calcMovingAverage(avg_angular_y) && ma_[5]->calcMovingAverage(avg_angular_z))
+    {
+        twist_msg.twist.linear.x = avg_linear_x;
+        twist_msg.twist.linear.y = avg_linear_y;
+        twist_msg.twist.linear.z = avg_linear_z;
+        twist_msg.twist.angular.x = avg_angular_x;
+        twist_msg.twist.angular.y = avg_angular_y;
+        twist_msg.twist.angular.z = avg_angular_z;
     }
 
     /////debug only
@@ -325,6 +348,8 @@ void CobFrameTracker::publishHoldTwist(const ros::Duration& period)
     
     geometry_msgs::TwistStamped twist_msg;
     twist_msg.header.frame_id = tracking_frame_;
+
+
 
     if(!this->ht_.hold)
     {
