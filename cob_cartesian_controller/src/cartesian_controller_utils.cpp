@@ -20,14 +20,16 @@
  *   Author: Christoph Mark, email: christoph.mark@ipa.fraunhofer.de / christoph.mark@gmail.com
  *
  * \date Date of creation: December, 2015
- *   This class contains useful functions which are not directly part of the cartesian controller.
+ *
  * \brief
- *   ...
+ *   Helper functions  used in the cob_cartesian_controller package.
  *
  ****************************************************************/
 
+#include <string>
+#include <vector>
+#include <algorithm>
 #include <cob_cartesian_controller/cartesian_controller_utils.h>
-
 
 geometry_msgs::Pose CartesianControllerUtils::getPose(const std::string& target_frame, const std::string& source_frame)
 {
@@ -51,8 +53,8 @@ tf::StampedTransform CartesianControllerUtils::getStampedTransform(const std::st
     {
         try
         {
-            ros::Time now = ros::Time(0);
-            tf_listener_.waitForTransform(target_frame, source_frame, now, ros::Duration(0.5));
+            ros::Time now = ros::Time::now();
+            tf_listener_.waitForTransform(target_frame, source_frame, now, ros::Duration(0.1));
             tf_listener_.lookupTransform(target_frame, source_frame, now, stamped_transform);
             transform = true;
         }
@@ -77,8 +79,8 @@ void CartesianControllerUtils::transformPose(const std::string source_frame, con
     {
         try
         {
-            stamped_in.header.stamp = ros::Time(0);
-            tf_listener_.waitForTransform(target_frame, source_frame, stamped_in.header.stamp, ros::Duration(1.0));
+            ros::Time now = ros::Time::now();
+            tf_listener_.waitForTransform(target_frame, source_frame, now, ros::Duration(0.1));
             tf_listener_.transformPose(target_frame, stamped_in, stamped_out);
             pose_out = stamped_out.pose;
             transform = true;
@@ -128,7 +130,7 @@ void CartesianControllerUtils::poseToRPY(const geometry_msgs::Pose& pose, double
     tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 }
 
-void CartesianControllerUtils::previewPath(const geometry_msgs::PoseArray& pose_array)
+void CartesianControllerUtils::previewPath(const geometry_msgs::PoseArray pose_array)
 {
     visualization_msgs::Marker marker;
     marker.type = visualization_msgs::Marker::SPHERE;
