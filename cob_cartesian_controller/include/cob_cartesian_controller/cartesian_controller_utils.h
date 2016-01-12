@@ -20,14 +20,17 @@
  *   Author: Christoph Mark, email: christoph.mark@ipa.fraunhofer.de / christoph.mark@gmail.com
  *
  * \date Date of creation: December, 2015
- *   This class contains useful functions which are not directly part of the cartesian controller.
+ *   
  * \brief
- *   ...
+ *   Helper functions  used in the cob_cartesian_controller package.
  *
  ****************************************************************/
 
-#ifndef COB_CARTESIAN_CONTROLLER_UTILS_H_
-#define COB_CARTESIAN_CONTROLLER_UTILS_H_
+#ifndef COB_CARTESIAN_CONTROLLER_CARTESIAN_CONTROLLER_UTILS_H
+#define COB_CARTESIAN_CONTROLLER_CARTESIAN_CONTROLLER_UTILS_H
+
+#include <string>
+#include <vector>
 
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
@@ -35,16 +38,14 @@
 
 #include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/MarkerArray.h>
-#include "cob_cartesian_controller/cartesian_controller_data_types.h"
-
-
+#include <cob_cartesian_controller/cartesian_controller_data_types.h>
 
 class CartesianControllerUtils
 {
 public:
     CartesianControllerUtils()
     {
-        marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("cartesian_controller/preview_path",1);
+        marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("cartesian_controller/preview_path", 1);
     }
 
     void transformPose(const std::string source_frame, const std::string target_frame, const geometry_msgs::Pose pose_in, geometry_msgs::Pose& pose_out);
@@ -54,12 +55,11 @@ public:
     bool inEpsilonArea(const tf::StampedTransform& stamped_transform, const double epsilon);
     void poseToRPY(const geometry_msgs::Pose& pose, double& roll, double& pitch, double& yaw);
 
-    void previewPath(const geometry_msgs::PoseArray& pose_array);
+    void previewPath(const geometry_msgs::PoseArray pose_array);
 
-    void sortMatrixByIdx(std::vector<cob_cartesian_controller::PathArray> &m);
-    void adjustArrayLength(std::vector<cob_cartesian_controller::PathArray> &m);
-    void copyMatrix(std::vector<double> *path_array,std::vector<cob_cartesian_controller::PathArray> &m);
-    double roundUpToMultiplier(double numberToRound, double multiplier);
+    void adjustArrayLength(std::vector<cob_cartesian_controller::PathArray>& m);
+    void copyMatrix(std::vector<double>* path_array, std::vector<cob_cartesian_controller::PathArray>& m);
+    double roundUpToMultiplier(const double numberToRound, const double multiplier);
 
 private:
     ros::NodeHandle nh_;
@@ -69,4 +69,4 @@ private:
     ros::Publisher marker_pub_;
 };
 
-#endif /* COB_CARTESIAN_CONTROLLER_UTILS_H_ */
+#endif  // COB_CARTESIAN_CONTROLLER_CARTESIAN_CONTROLLER_UTILS_H

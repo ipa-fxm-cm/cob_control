@@ -20,18 +20,20 @@
  *   Author: Christoph Mark, email: christoph.mark@ipa.fraunhofer.de / christoph.mark@gmail.com
  *
  * \date Date of creation: December, 2015
- *   This class contains the implementation for the linear and circular interpolation.
+ *
  * \brief
- *   ...
+ *   This class contains the implementation for the linear and circular interpolation.
  *
  ****************************************************************/
 
+#include <math.h>
+#include <vector>
+
 #include <cob_cartesian_controller/trajectory_interpolator/trajectory_interpolator.h>
 #include <cob_cartesian_controller/trajectory_profile_generator/trajectory_profile_generator_builder.h>
-#include <math.h>
 
 bool TrajectoryInterpolator::linearInterpolation(geometry_msgs::PoseArray& pose_array,
-                                                 const cob_cartesian_controller::CartesianActionStruct& as)
+                                                 const cob_cartesian_controller::CartesianActionStruct as)
 {
     this->trajectory_profile_generator_.reset(TrajectoryProfileBuilder::createProfile(as));
 
@@ -45,8 +47,8 @@ bool TrajectoryInterpolator::linearInterpolation(geometry_msgs::PoseArray& pose_
     geometry_msgs::Pose pose;
 
     double norm_factor;
-    tf::quaternionMsgToTF(as.move_lin.start.orientation,q_start);
-    tf::quaternionMsgToTF(as.move_lin.end.orientation,q_end);
+    tf::quaternionMsgToTF(as.move_lin.start.orientation, q_start);
+    tf::quaternionMsgToTF(as.move_lin.end.orientation, q_end);
 
     double Se_lin = sqrt(pow((as.move_lin.end.position.x - as.move_lin.start.position.x), 2) +
                          pow((as.move_lin.end.position.y - as.move_lin.start.position.y), 2) +
@@ -54,7 +56,7 @@ bool TrajectoryInterpolator::linearInterpolation(geometry_msgs::PoseArray& pose_
 
     double Se_rot = q_start.angleShortestPath(q_end);
 
-    if(!trajectory_profile_generator_->calculateProfile(path_matrix, Se_lin, Se_rot, as.move_lin.start))
+    if (!trajectory_profile_generator_->calculateProfile(path_matrix, Se_lin, Se_rot))
     {
         return false;
     }
@@ -62,7 +64,7 @@ bool TrajectoryInterpolator::linearInterpolation(geometry_msgs::PoseArray& pose_
     linear_path  = path_matrix[0];
     angular_path = path_matrix[1];
 
-    if(fabs(linear_path.back()) > fabs(angular_path.back()))
+    if (fabs(linear_path.back()) > fabs(angular_path.back()))
     {
         path = linear_path;
     }
@@ -73,9 +75,9 @@ bool TrajectoryInterpolator::linearInterpolation(geometry_msgs::PoseArray& pose_
     norm_factor = 1/path.back();
 
     // Interpolate the linear path
-    for(unsigned int i = 0 ; i < linear_path.size() ; i++)
+    for (unsigned int i = 0; i < linear_path.size(); i++)
     {
-        if(linear_path.back() == 0)
+        if (linear_path.back() == 0)
         {
             pose.position.x = as.move_lin.start.position.x;
             pose.position.y = as.move_lin.start.position.y;
@@ -95,7 +97,7 @@ bool TrajectoryInterpolator::linearInterpolation(geometry_msgs::PoseArray& pose_
 }
 
 bool TrajectoryInterpolator::circularInterpolation(geometry_msgs::PoseArray& pose_array,
-                                                   const cob_cartesian_controller::CartesianActionStruct& as)
+                                                   const cob_cartesian_controller::CartesianActionStruct as)
 {
      pose_array.header.stamp = ros::Time::now();
      pose_array.header.frame_id = root_frame_;
@@ -112,8 +114,8 @@ bool TrajectoryInterpolator::circularInterpolation(geometry_msgs::PoseArray& pos
 
      bool forward;
 
-     // Needed for the circle direction !
-     if(Se < 0)
+     // Needed for the circle direction!
+     if (Se < 0)
      {
          forward = false;
      }
@@ -124,7 +126,7 @@ bool TrajectoryInterpolator::circularInterpolation(geometry_msgs::PoseArray& pos
      Se = std::fabs(Se);
 
      // Calculates the Path with RAMP or SINOID profile
-     if(!this->trajectory_profile_generator_->calculateProfile(path_matrix, Se, 0, pose))
+     if (!this->trajectory_profile_generator_->calculateProfile(path_matrix, Se, 0))
      {
          return false;
      }
@@ -136,12 +138,12 @@ bool TrajectoryInterpolator::circularInterpolation(geometry_msgs::PoseArray& pos
      C.setRotation(q);
 
      // Interpolate the circular path
-     for(int i = 0 ; i < path_array.size() ; i++)
+     for (unsigned int i = 0; i < path_array.size(); i++)
      {
          // Rotate T
          T.setOrigin(tf::Vector3(cos(path_array.at(i)) * as.move_circ.radius, 0, sin(path_array.at(i)) * as.move_circ.radius));
 
-         if(forward)
+         if (forward)
          {
              T.setOrigin(tf::Vector3(cos(path_array.at(i)) * as.move_circ.radius, 0, sin(path_array.at(i)) * as.move_circ.radius));
              q.setRPY(0, -path_array.at(i), 0);

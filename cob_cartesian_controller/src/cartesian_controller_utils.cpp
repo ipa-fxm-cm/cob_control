@@ -60,10 +60,10 @@ tf::StampedTransform CartesianControllerUtils::getStampedTransform(const std::st
         }
         catch (tf::TransformException& ex)
         {
-            ROS_ERROR("CartesianControllerUtils::getStampedTransform: \n%s",ex.what());
+            ROS_ERROR("CartesianControllerUtils::getStampedTransform: \n%s", ex.what());
             ros::Duration(0.1).sleep();
         }
-    }while(!transform && ros::ok());
+    } while (!transform && ros::ok());
 
     return stamped_transform;
 }
@@ -87,10 +87,10 @@ void CartesianControllerUtils::transformPose(const std::string source_frame, con
         }
         catch (tf::TransformException& ex)
         {
-            ROS_ERROR("CartesianControllerUtils::transformPose: \n%s",ex.what());
+            ROS_ERROR("CartesianControllerUtils::transformPose: \n%s", ex.what());
             ros::Duration(0.1).sleep();
         }
-    }while(!transform && ros::ok());
+    } while (!transform && ros::ok());
 }
 
 
@@ -113,7 +113,7 @@ bool CartesianControllerUtils::inEpsilonArea(const tf::StampedTransform& stamped
     pitch_okay  = std::fabs(pitch) < epsilon;
     yaw_okay    = std::fabs(yaw)   < epsilon;
 
-    if(x_okay && y_okay && z_okay && roll_okay && pitch_okay && yaw_okay)
+    if (x_okay && y_okay && z_okay && roll_okay && pitch_okay && yaw_okay)
     {
         return true;
     }
@@ -148,9 +148,9 @@ void CartesianControllerUtils::previewPath(const geometry_msgs::PoseArray pose_a
 
     double id = marker_array_.markers.size();
 
-    for(unsigned int i=0; i < pose_array.poses.size(); i++)
+    for (unsigned int i = 0; i < pose_array.poses.size(); i++)
     {
-        marker.id = id+i;
+        marker.id = id + i;
         marker.pose = pose_array.poses.at(i);
         marker_array_.markers.push_back(marker);
     }
@@ -158,32 +158,32 @@ void CartesianControllerUtils::previewPath(const geometry_msgs::PoseArray pose_a
     marker_pub_.publish(marker_array_);
 }
 
-void CartesianControllerUtils::adjustArrayLength(std::vector<cob_cartesian_controller::PathArray> &m)
+void CartesianControllerUtils::adjustArrayLength(std::vector<cob_cartesian_controller::PathArray>& m)
 {
     unsigned int max_steps = 0;
-    for(int i = 0; i < m.size(); i++)
+    for (unsigned int i = 0; i < m.size(); i++)
     {
-        max_steps = std::max((unsigned int)m[i].array_.size() , max_steps);
+        max_steps = std::max((unsigned int)m[i].array_.size(), max_steps);
     }
 
-    for(int i = 0; i < m.size(); i++)
+    for (unsigned int i = 0; i < m.size(); i++)
     {
-        if(m[i].array_.size() < max_steps)
+        if (m[i].array_.size() < max_steps)
         {
             m[i].array_.resize(max_steps, m[i].array_.back());
         }
     }
 }
 
-void CartesianControllerUtils::copyMatrix(std::vector<double> *path_array,std::vector<cob_cartesian_controller::PathArray> &m)
+void CartesianControllerUtils::copyMatrix(std::vector<double>* path_array, std::vector<cob_cartesian_controller::PathArray>& m)
 {
-    for(int i = 0; i < m.size(); i++)
+    for (unsigned int i = 0; i < m.size(); i++)
     {
         path_array[i] = m[i].array_;
     }
 }
 
-double CartesianControllerUtils::roundUpToMultiplier(double numberToRound, double multiplier)
+double CartesianControllerUtils::roundUpToMultiplier(const double numberToRound, const double multiplier)
 {
-    return ( multiplier - std::fmod(numberToRound,multiplier) + numberToRound );
+    return ( multiplier - std::fmod(numberToRound, multiplier) + numberToRound );
 }

@@ -20,26 +20,27 @@
  *   Author: Christoph Mark, email: christoph.mark@ipa.fraunhofer.de / christoph.mark@gmail.com
  *
  * \date Date of creation: December, 2015
- *   Builder class for generic profile generator.
+ *
  * \brief
+ *   Builder class for generic profile generator.
  *
  ****************************************************************/
-#ifndef TRAJECTORY_PROFILE_BUILDER_H_
-#define TRAJECTORY_PROFILE_BUILDER_H_
 
-#include "cob_cartesian_controller/cartesian_controller_data_types.h"
-#include "cob_cartesian_controller/trajectory_profile_generator/trajectory_profile_generator_base.h"
+#ifndef COB_CARTESIAN_CONTROLLER_TRAJECTORY_PROFILE_GENERATOR_TRAJECTORY_PROFILE_GENERATOR_BUILDER_H
+#define COB_CARTESIAN_CONTROLLER_TRAJECTORY_PROFILE_GENERATOR_TRAJECTORY_PROFILE_GENERATOR_BUILDER_H
 
+#include <cob_cartesian_controller/cartesian_controller_data_types.h>
+#include <cob_cartesian_controller/trajectory_profile_generator/trajectory_profile_generator_base.h>
 
 /* BEGIN TrajectoryProfileBuilder *****************************************************************************************/
 class TrajectoryProfileBuilder
 {
-    public:
-        TrajectoryProfileBuilder() {}
-        ~TrajectoryProfileBuilder() {}
+public:
+    TrajectoryProfileBuilder() {}
+    ~TrajectoryProfileBuilder() {}
 
-        static TrajectoryProfileBase* createProfile(const cob_cartesian_controller::CartesianActionStruct& params);
+    static TrajectoryProfileBase* createProfile(const cob_cartesian_controller::CartesianActionStruct& params);
 };
 /* END TrajectoryGeneratorBuilder *******************************************************************************************/
 
-#endif
+#endif  // COB_CARTESIAN_CONTROLLER_TRAJECTORY_PROFILE_GENERATOR_TRAJECTORY_PROFILE_GENERATOR_BUILDER_H
