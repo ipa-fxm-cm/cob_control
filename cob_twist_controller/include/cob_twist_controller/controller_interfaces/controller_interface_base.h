@@ -76,12 +76,12 @@ class ControllerInterfacePositionBase : public ControllerInterfaceBase
         bool updateIntegration(const KDL::JntArray& q_dot_ik,
                                const KDL::JntArray& current_q)
         {
-            return integrator_->updateIntegration(q_dot_ik, current_q, pos, vel);
+            return integrator_->updateIntegration(q_dot_ik, current_q, pos, vel, accl);
         }
 
     protected:
         boost::shared_ptr<SimpsonIntegrator> integrator_;
-        std::vector<double> pos, vel;
+        std::vector<double> pos, vel, accl;
 };
 
 #endif  // COB_TWIST_CONTROLLER_CONTROLLER_INTERFACES_CONTROLLER_INTERFACE_BASE_H

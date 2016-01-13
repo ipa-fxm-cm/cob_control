@@ -170,13 +170,14 @@ void KinematicExtensionLookat::processResultExtension(const KDL::JntArray& q_dot
     boost::mutex::scoped_lock lock(mutex_);
     std::vector<double> pos;
     std::vector<double> vel;
+    std::vector<double> accl;
 
     for (unsigned int i = 0; i < ext_dof_; i++)
     {
         joint_states_ext_.current_q_dot_(i) = q_dot_ik(params_.dof + i);
     }
 
-    if (integrator_->updateIntegration(joint_states_ext_.current_q_dot_, joint_states_ext_.current_q_, pos, vel))
+    if (integrator_->updateIntegration(joint_states_ext_.current_q_dot_, joint_states_ext_.current_q_, pos, vel, accl))
     {
         for (unsigned int i = 0; i < ext_dof_; i++)
         {

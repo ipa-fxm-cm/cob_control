@@ -56,7 +56,10 @@ class SimpsonIntegrator
             q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/q_dot_ik", 1);
             derived_q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/derived_q_dot_ik", 1);
             pos_pub_ = nh_.advertise<std_msgs::Float64> ("debug/pos", 1);
-
+            ratio_pub_ = nh_.advertise<std_msgs::Float64> ("debug/ratio", 1);
+            counter = 0;
+            ROS_INFO("counter = 0");
+            summarize_ratio = 0;
         }
         ~SimpsonIntegrator()
         {}
@@ -79,7 +82,8 @@ class SimpsonIntegrator
         bool updateIntegration(const KDL::JntArray& q_dot_ik,
                                const KDL::JntArray& current_q,
                                std::vector<double>& pos,
-                               std::vector<double>& vel)
+                               std::vector<double>& vel,
+                               std::vector<double>& accl)
         {
             double norm_real_vel=0;
             double norm_int_vel=0;
@@ -88,6 +92,7 @@ class SimpsonIntegrator
             std_msgs::Float64 q_dot_ik_msg;
             std_msgs::Float64 derived_q_dot_ik_msg;
             std_msgs::Float64 pos_msg;
+            std_msgs::Float64 ratio_msg;
 
             ros::Time now = ros::Time::now();
             ros::Duration period = now - last_update_time_;
@@ -95,6 +100,7 @@ class SimpsonIntegrator
             bool value_valid = false;
             pos.clear();
             vel.clear();
+            accl.clear();
 
             // ToDo: Test these conditions and find good thresholds
             // if (period.toSec() > 2*last_period_.toSec())  // missed about a cycle
@@ -102,6 +108,8 @@ class SimpsonIntegrator
             {
                 ROS_WARN_STREAM("reset Integration: " << period.toSec());
                 resetIntegration();
+                counter = 0;
+                summarize_ratio = 0;
             }
 
             if (!vel_before_last_.empty())
@@ -119,7 +127,6 @@ class SimpsonIntegrator
                     }
                 }
                 value_valid = true;
-                ROS_INFO("value_valid = true;");
             }
 
             // Continuously shift the vectors for simpson integration
@@ -134,6 +141,14 @@ class SimpsonIntegrator
             {
                 vel_last_.push_back(q_dot_ik(i));
             }
+
+            // Get acceleration
+
+            for(unsigned int i=0; i < vel.size(); ++i)
+            {
+                accl.push_back((vel.at(i) - vel_last_.at(i)) / period.toSec());
+            }
+
 
             if (calculate_velocity)
             {
@@ -158,19 +173,26 @@ class SimpsonIntegrator
                 }
                 norm_pos = sqrt(norm_pos);
 
-                ma_output_[0]->addElement(norm_int_vel);
                 double avg_int_vel;
+                ma_output_[0]->addElement(norm_int_vel);
                 ma_output_[0]->calcMovingAverage(avg_int_vel);
 
+                // Prepare messages
                 q_dot_ik_msg.data = norm_real_vel;
-//                derived_q_dot_ik_msg.data = norm_int_vel;
                 derived_q_dot_ik_msg.data = avg_int_vel;
-
                 pos_msg.data = norm_pos;
+                ratio_msg.data = avg_int_vel / norm_real_vel;
 
+                // Publish
                 q_dot_ik_pub_.publish(q_dot_ik_msg);
                 derived_q_dot_ik_pub_.publish(derived_q_dot_ik_msg);
                 pos_pub_.publish(pos_msg);
+                ratio_pub_.publish(ratio_msg);
+
+                summarize_ratio += avg_int_vel / norm_real_vel;
+                counter++;
+
+                ROS_WARN_STREAM("Ratio: " << summarize_ratio/counter);
             }
 
             if(value_valid)
@@ -182,7 +204,6 @@ class SimpsonIntegrator
                     pos_before_.push_back(pos.at(i));
                 }
                 calculate_velocity = true;
-                ROS_INFO("calculate_velocity = true");
             }
 
             last_update_time_ = now;
@@ -202,9 +223,10 @@ class SimpsonIntegrator
         bool start_shiftig_pos;
         bool calculate_velocity;
         std::vector<double> pos_before_;
-        ros::Publisher q_dot_ik_pub_, derived_q_dot_ik_pub_, pos_pub_;
+        ros::Publisher q_dot_ik_pub_, derived_q_dot_ik_pub_, pos_pub_, ratio_pub_;
         ros::NodeHandle nh_;
-
+        double summarize_ratio;
+        unsigned int counter;
 };
 
 #endif  // COB_TWIST_CONTROLLER_UTILS_SIMPSON_INTEGRATOR_H
