@@ -35,6 +35,7 @@
 #include <kdl/jntarray.hpp>
 
 #include "cob_twist_controller/utils/moving_average.h"
+#include <std_msgs/Float64.h>
 
 class SimpsonIntegrator
 {
@@ -44,11 +45,18 @@ class SimpsonIntegrator
             dof_ = dof;
             for (uint8_t i = 0; i < dof_; i++)
             {
-                // ma_.push_back(new MovingAvgSimple_double_t(3));
-                ma_.push_back(new MovingAvgExponential_double_t(0.3));
+                 ma_.push_back(new MovingAvgSimple_double_t(2));
+//                ma_.push_back(new MovingAvgExponential_double_t(1));
+                ma_output_.push_back(new MovingAvgSimple_double_t(2));
             }
             last_update_time_ = ros::Time(0.0);
             last_period_ = ros::Duration(0.0);
+            start_shiftig_pos = false;
+            calculate_velocity = false;
+            q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/q_dot_ik", 1);
+            derived_q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/derived_q_dot_ik", 1);
+            pos_pub_ = nh_.advertise<std_msgs::Float64> ("debug/pos", 1);
+
         }
         ~SimpsonIntegrator()
         {}
@@ -64,6 +72,7 @@ class SimpsonIntegrator
             for (unsigned int i = 0; i < dof_; ++i)
             {
                 ma_[i]->reset();
+                ma_output_[i]->reset();
             }
         }
 
@@ -72,6 +81,14 @@ class SimpsonIntegrator
                                std::vector<double>& pos,
                                std::vector<double>& vel)
         {
+            double norm_real_vel=0;
+            double norm_int_vel=0;
+            double norm_pos = 0;
+
+            std_msgs::Float64 q_dot_ik_msg;
+            std_msgs::Float64 derived_q_dot_ik_msg;
+            std_msgs::Float64 pos_msg;
+
             ros::Time now = ros::Time::now();
             ros::Duration period = now - last_update_time_;
 
@@ -102,6 +119,7 @@ class SimpsonIntegrator
                     }
                 }
                 value_valid = true;
+                ROS_INFO("value_valid = true;");
             }
 
             // Continuously shift the vectors for simpson integration
@@ -117,18 +135,76 @@ class SimpsonIntegrator
                 vel_last_.push_back(q_dot_ik(i));
             }
 
+            if (calculate_velocity)
+            {
+                // Norm of real velocity
+                for (unsigned int i=0; i < q_dot_ik.rows(); ++i)
+                {
+                    norm_real_vel+=pow(q_dot_ik(i),2);
+                }
+                norm_real_vel = sqrt(norm_real_vel);
+
+                // Norm of integrated position to velocity.
+                for (unsigned int i=0; i < pos.size(); ++i)
+                {
+                    norm_int_vel += pow( (pos.at(i) - pos_before_.at(i)) / period.toSec(), 2);
+                }
+                norm_int_vel = sqrt(norm_int_vel);
+
+                // Norm of the position.
+                for (unsigned int i=0; i < pos.size(); ++i)
+                {
+                    norm_pos += pow(pos.at(i), 2);
+                }
+                norm_pos = sqrt(norm_pos);
+
+                ma_output_[0]->addElement(norm_int_vel);
+                double avg_int_vel;
+                ma_output_[0]->calcMovingAverage(avg_int_vel);
+
+                q_dot_ik_msg.data = norm_real_vel;
+//                derived_q_dot_ik_msg.data = norm_int_vel;
+                derived_q_dot_ik_msg.data = avg_int_vel;
+
+                pos_msg.data = norm_pos;
+
+                q_dot_ik_pub_.publish(q_dot_ik_msg);
+                derived_q_dot_ik_pub_.publish(derived_q_dot_ik_msg);
+                pos_pub_.publish(pos_msg);
+            }
+
+            if(value_valid)
+            {
+                pos_before_.clear();
+
+                for (unsigned int i=0; i < pos.size(); ++i)
+                {
+                    pos_before_.push_back(pos.at(i));
+                }
+                calculate_velocity = true;
+                ROS_INFO("calculate_velocity = true");
+            }
+
             last_update_time_ = now;
             last_period_ = period;
+
 
             return value_valid;
         }
 
     private:
         std::vector<MovingAvgBase_double_t*> ma_;
+        std::vector<MovingAvgBase_double_t*> ma_output_;
         uint8_t dof_;
         std::vector<double> vel_last_, vel_before_last_;
         ros::Time last_update_time_;
         ros::Duration last_period_;
+        bool start_shiftig_pos;
+        bool calculate_velocity;
+        std::vector<double> pos_before_;
+        ros::Publisher q_dot_ik_pub_, derived_q_dot_ik_pub_, pos_pub_;
+        ros::NodeHandle nh_;
+
 };
 
 #endif  // COB_TWIST_CONTROLLER_UTILS_SIMPSON_INTEGRATOR_H
