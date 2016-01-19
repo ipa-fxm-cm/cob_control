@@ -36,6 +36,11 @@
 
 #include "cob_twist_controller/utils/moving_average.h"
 #include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
+
+
+#include <iostream>
+#include <fstream>
 
 class SimpsonIntegrator
 {
@@ -46,7 +51,7 @@ class SimpsonIntegrator
             for (uint8_t i = 0; i < dof_; i++)
             {
                  ma_.push_back(new MovingAvgSimple_double_t(2));
-//                ma_.push_back(new MovingAvgExponential_double_t(1));
+//                ma_.push_back(new MovingAvgExponential_double_t(0.5));
                 ma_output_.push_back(new MovingAvgSimple_double_t(2));
             }
             last_update_time_ = ros::Time(0.0);
@@ -57,9 +62,9 @@ class SimpsonIntegrator
             derived_q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/derived_q_dot_ik", 1);
             pos_pub_ = nh_.advertise<std_msgs::Float64> ("debug/pos", 1);
             ratio_pub_ = nh_.advertise<std_msgs::Float64> ("debug/ratio", 1);
-            counter = 0;
-            ROS_INFO("counter = 0");
+            pos_array_pub_ = nh_.advertise<std_msgs::Float64MultiArray> ("debug/pos_array", 1);
             summarize_ratio = 0;
+            counter = 0;
         }
         ~SimpsonIntegrator()
         {}
@@ -85,6 +90,28 @@ class SimpsonIntegrator
                                std::vector<double>& vel,
                                std::vector<double>& accl)
         {
+//            if (!time.is_open()){
+//                time.open ("/home/fxm-cm/Desktop/time.m");
+//            }
+//            if (!signal1.is_open()){
+//                signal1.open ("/home/fxm-cm/Desktop/signal1.m");
+//            }
+//            if (!signal2.is_open()){
+//                signal2.open ("/home/fxm-cm/Desktop/signal2.m");
+//            }
+//            if (!signal3.is_open()){
+//                signal3.open ("/home/fxm-cm/Desktop/signal3.m");
+//            }
+//            if (!signal4.is_open()){
+//                signal4.open ("/home/fxm-cm/Desktop/signal4.m");
+//            }
+//            if (!signal5.is_open()){
+//                signal5.open ("/home/fxm-cm/Desktop/signal5.m");
+//            }
+//            if (!signal6.is_open()){
+//                signal6.open ("/home/fxm-cm/Desktop/signal6.m");
+//            }
+
             double norm_real_vel=0;
             double norm_int_vel=0;
             double norm_pos = 0;
@@ -93,6 +120,7 @@ class SimpsonIntegrator
             std_msgs::Float64 derived_q_dot_ik_msg;
             std_msgs::Float64 pos_msg;
             std_msgs::Float64 ratio_msg;
+            std_msgs::Float64MultiArray pos_array_msg;
 
             ros::Time now = ros::Time::now();
             ros::Duration period = now - last_update_time_;
@@ -101,6 +129,7 @@ class SimpsonIntegrator
             pos.clear();
             vel.clear();
             accl.clear();
+            pos_array_msg.data.clear();
 
             // ToDo: Test these conditions and find good thresholds
             // if (period.toSec() > 2*last_period_.toSec())  // missed about a cycle
@@ -120,12 +149,14 @@ class SimpsonIntegrator
                     double integration_value = static_cast<double>(period.toSec() / 6.0 * (vel_before_last_[i] + 4.0 * (vel_before_last_[i] + vel_last_[i]) + vel_before_last_[i] + vel_last_[i] + q_dot_ik(i)) + current_q(i));
                     ma_[i]->addElement(integration_value);
                     double avg = 0.0;
+
                     if (ma_[i]->calcMovingAverage(avg))
                     {
                         pos.push_back(avg);
                         vel.push_back(q_dot_ik(i));
                     }
                 }
+
                 value_valid = true;
             }
 
@@ -143,12 +174,10 @@ class SimpsonIntegrator
             }
 
             // Get acceleration
-
             for(unsigned int i=0; i < vel.size(); ++i)
             {
                 accl.push_back((vel.at(i) - vel_last_.at(i)) / period.toSec());
             }
-
 
             if (calculate_velocity)
             {
@@ -173,6 +202,30 @@ class SimpsonIntegrator
                 }
                 norm_pos = sqrt(norm_pos);
 
+//                if(pos.size()!=0)
+//                {
+//                    if (time.is_open()){
+//                        time <<  ros::Time::now() << "\n";
+//                    }
+//                    if (signal1.is_open()){
+//                          signal1 <<  pos.at(0) << "\n";
+//                    }
+//                    if (signal2.is_open()){
+//                          signal2 <<  pos.at(1) << "\n";
+//                    }
+//                    if (signal3.is_open()){
+//                          signal3 <<  pos.at(2) << "\n";
+//                    }
+//                    if (signal4.is_open()){
+//                          signal4 <<  pos.at(3) << "\n";
+//                    }
+//                    if (signal5.is_open()){
+//                          signal5 <<  pos.at(4) << "\n";
+//                    }
+//                    if (signal6.is_open()){
+//                          signal6 <<  pos.at(5) << "\n";
+//                    }
+//                }
                 double avg_int_vel;
                 ma_output_[0]->addElement(norm_int_vel);
                 ma_output_[0]->calcMovingAverage(avg_int_vel);
@@ -182,17 +235,21 @@ class SimpsonIntegrator
                 derived_q_dot_ik_msg.data = avg_int_vel;
                 pos_msg.data = norm_pos;
                 ratio_msg.data = avg_int_vel / norm_real_vel;
+                pos_array_msg.data = pos;
 
                 // Publish
                 q_dot_ik_pub_.publish(q_dot_ik_msg);
                 derived_q_dot_ik_pub_.publish(derived_q_dot_ik_msg);
                 pos_pub_.publish(pos_msg);
                 ratio_pub_.publish(ratio_msg);
+                pos_array_pub_.publish(pos_array_msg);
 
-                summarize_ratio += avg_int_vel / norm_real_vel;
-                counter++;
-
-                ROS_WARN_STREAM("Ratio: " << summarize_ratio/counter);
+                if(avg_int_vel / norm_real_vel < 3 && isnan(avg_int_vel / norm_real_vel) == 0)
+                {
+                    summarize_ratio += avg_int_vel / norm_real_vel;
+                    ROS_WARN_STREAM("ratio: " << summarize_ratio/counter);
+                    counter++;
+                }
             }
 
             if(value_valid)
@@ -227,6 +284,10 @@ class SimpsonIntegrator
         ros::NodeHandle nh_;
         double summarize_ratio;
         unsigned int counter;
+        ros::Publisher pos_array_pub_;
+
+//        std::ofstream time;
+//        std::ofstream signal1,signal2,signal3,signal4,signal5,signal6;
 };
 
 #endif  // COB_TWIST_CONTROLLER_UTILS_SIMPSON_INTEGRATOR_H

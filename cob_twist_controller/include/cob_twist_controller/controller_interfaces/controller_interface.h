@@ -105,12 +105,18 @@ class ControllerInterfaceTrajectory : public ControllerInterfacePositionBase
         : ControllerInterfacePositionBase(nh, params)
         {
             pub_ = nh.advertise<trajectory_msgs::JointTrajectory>("joint_trajectory_controller/command", 1);
+            last_update_time_ = ros::Time(0.0);
+            last_period_ = ros::Duration(0.0);
         }
 
         ~ControllerInterfaceTrajectory() {}
 
         virtual void processResult(const KDL::JntArray& q_dot_ik,
                                    const KDL::JntArray& current_q);
+
+    private:
+        ros::Time last_update_time_;
+        ros::Duration last_period_;
 };
 /* END ControllerInterfaceTrajectory **********************************************************************************************/
 
