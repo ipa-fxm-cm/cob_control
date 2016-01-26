@@ -52,19 +52,9 @@ class SimpsonIntegrator
             {
                  ma_.push_back(new MovingAvgSimple_double_t(2));
 //                ma_.push_back(new MovingAvgExponential_double_t(0.5));
-                ma_output_.push_back(new MovingAvgSimple_double_t(2));
             }
             last_update_time_ = ros::Time(0.0);
             last_period_ = ros::Duration(0.0);
-            start_shiftig_pos = false;
-            calculate_velocity = false;
-            q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/q_dot_ik", 1);
-            derived_q_dot_ik_pub_ = nh_.advertise<std_msgs::Float64> ("debug/derived_q_dot_ik", 1);
-            pos_pub_ = nh_.advertise<std_msgs::Float64> ("debug/pos", 1);
-            ratio_pub_ = nh_.advertise<std_msgs::Float64> ("debug/ratio", 1);
-            pos_array_pub_ = nh_.advertise<std_msgs::Float64MultiArray> ("debug/pos_array", 1);
-            summarize_ratio = 0;
-            counter = 0;
         }
         ~SimpsonIntegrator()
         {}
@@ -80,56 +70,20 @@ class SimpsonIntegrator
             for (unsigned int i = 0; i < dof_; ++i)
             {
                 ma_[i]->reset();
-                ma_output_[i]->reset();
             }
         }
 
         bool updateIntegration(const KDL::JntArray& q_dot_ik,
                                const KDL::JntArray& current_q,
                                std::vector<double>& pos,
-                               std::vector<double>& vel,
-                               std::vector<double>& accl)
+                               std::vector<double>& vel)
         {
-//            if (!time.is_open()){
-//                time.open ("/home/fxm-cm/Desktop/time.m");
-//            }
-//            if (!signal1.is_open()){
-//                signal1.open ("/home/fxm-cm/Desktop/signal1.m");
-//            }
-//            if (!signal2.is_open()){
-//                signal2.open ("/home/fxm-cm/Desktop/signal2.m");
-//            }
-//            if (!signal3.is_open()){
-//                signal3.open ("/home/fxm-cm/Desktop/signal3.m");
-//            }
-//            if (!signal4.is_open()){
-//                signal4.open ("/home/fxm-cm/Desktop/signal4.m");
-//            }
-//            if (!signal5.is_open()){
-//                signal5.open ("/home/fxm-cm/Desktop/signal5.m");
-//            }
-//            if (!signal6.is_open()){
-//                signal6.open ("/home/fxm-cm/Desktop/signal6.m");
-//            }
-
-            double norm_real_vel=0;
-            double norm_int_vel=0;
-            double norm_pos = 0;
-
-            std_msgs::Float64 q_dot_ik_msg;
-            std_msgs::Float64 derived_q_dot_ik_msg;
-            std_msgs::Float64 pos_msg;
-            std_msgs::Float64 ratio_msg;
-            std_msgs::Float64MultiArray pos_array_msg;
-
             ros::Time now = ros::Time::now();
             ros::Duration period = now - last_update_time_;
 
             bool value_valid = false;
             pos.clear();
             vel.clear();
-            accl.clear();
-            pos_array_msg.data.clear();
 
             // ToDo: Test these conditions and find good thresholds
             // if (period.toSec() > 2*last_period_.toSec())  // missed about a cycle
@@ -137,8 +91,6 @@ class SimpsonIntegrator
             {
                 ROS_WARN_STREAM("reset Integration: " << period.toSec());
                 resetIntegration();
-                counter = 0;
-                summarize_ratio = 0;
             }
 
             if (!vel_before_last_.empty())
@@ -173,121 +125,19 @@ class SimpsonIntegrator
                 vel_last_.push_back(q_dot_ik(i));
             }
 
-            // Get acceleration
-            for(unsigned int i=0; i < vel.size(); ++i)
-            {
-                accl.push_back((vel.at(i) - vel_last_.at(i)) / period.toSec());
-            }
-
-            if (calculate_velocity)
-            {
-                // Norm of real velocity
-                for (unsigned int i=0; i < q_dot_ik.rows(); ++i)
-                {
-                    norm_real_vel+=pow(q_dot_ik(i),2);
-                }
-                norm_real_vel = sqrt(norm_real_vel);
-
-                // Norm of integrated position to velocity.
-                for (unsigned int i=0; i < pos.size(); ++i)
-                {
-                    norm_int_vel += pow( (pos.at(i) - pos_before_.at(i)) / period.toSec(), 2);
-                }
-                norm_int_vel = sqrt(norm_int_vel);
-
-                // Norm of the position.
-                for (unsigned int i=0; i < pos.size(); ++i)
-                {
-                    norm_pos += pow(pos.at(i), 2);
-                }
-                norm_pos = sqrt(norm_pos);
-
-//                if(pos.size()!=0)
-//                {
-//                    if (time.is_open()){
-//                        time <<  ros::Time::now() << "\n";
-//                    }
-//                    if (signal1.is_open()){
-//                          signal1 <<  pos.at(0) << "\n";
-//                    }
-//                    if (signal2.is_open()){
-//                          signal2 <<  pos.at(1) << "\n";
-//                    }
-//                    if (signal3.is_open()){
-//                          signal3 <<  pos.at(2) << "\n";
-//                    }
-//                    if (signal4.is_open()){
-//                          signal4 <<  pos.at(3) << "\n";
-//                    }
-//                    if (signal5.is_open()){
-//                          signal5 <<  pos.at(4) << "\n";
-//                    }
-//                    if (signal6.is_open()){
-//                          signal6 <<  pos.at(5) << "\n";
-//                    }
-//                }
-                double avg_int_vel;
-                ma_output_[0]->addElement(norm_int_vel);
-                ma_output_[0]->calcMovingAverage(avg_int_vel);
-
-                // Prepare messages
-                q_dot_ik_msg.data = norm_real_vel;
-                derived_q_dot_ik_msg.data = avg_int_vel;
-                pos_msg.data = norm_pos;
-                ratio_msg.data = avg_int_vel / norm_real_vel;
-                pos_array_msg.data = pos;
-
-                // Publish
-                q_dot_ik_pub_.publish(q_dot_ik_msg);
-                derived_q_dot_ik_pub_.publish(derived_q_dot_ik_msg);
-                pos_pub_.publish(pos_msg);
-                ratio_pub_.publish(ratio_msg);
-                pos_array_pub_.publish(pos_array_msg);
-
-                if(avg_int_vel / norm_real_vel < 3 && isnan(avg_int_vel / norm_real_vel) == 0)
-                {
-                    summarize_ratio += avg_int_vel / norm_real_vel;
-                    ROS_WARN_STREAM("ratio: " << summarize_ratio/counter);
-                    counter++;
-                }
-            }
-
-            if(value_valid)
-            {
-                pos_before_.clear();
-
-                for (unsigned int i=0; i < pos.size(); ++i)
-                {
-                    pos_before_.push_back(pos.at(i));
-                }
-                calculate_velocity = true;
-            }
-
             last_update_time_ = now;
             last_period_ = period;
-
 
             return value_valid;
         }
 
     private:
         std::vector<MovingAvgBase_double_t*> ma_;
-        std::vector<MovingAvgBase_double_t*> ma_output_;
         uint8_t dof_;
         std::vector<double> vel_last_, vel_before_last_;
         ros::Time last_update_time_;
         ros::Duration last_period_;
-        bool start_shiftig_pos;
-        bool calculate_velocity;
         std::vector<double> pos_before_;
-        ros::Publisher q_dot_ik_pub_, derived_q_dot_ik_pub_, pos_pub_, ratio_pub_;
-        ros::NodeHandle nh_;
-        double summarize_ratio;
-        unsigned int counter;
-        ros::Publisher pos_array_pub_;
-
-//        std::ofstream time;
-//        std::ofstream signal1,signal2,signal3,signal4,signal5,signal6;
 };
 
 #endif  // COB_TWIST_CONTROLLER_UTILS_SIMPSON_INTEGRATOR_H

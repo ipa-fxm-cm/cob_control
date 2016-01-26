@@ -31,9 +31,8 @@ public:
 
         std::vector<double> next_q;
         std::vector<double> next_q_dot;
-        std::vector<double> next_q_dotdot;
 
-        if (integrator_->updateIntegration(q_dot_, q_, next_q, next_q_dot, next_q_dotdot))
+        if (integrator_->updateIntegration(q_dot_, q_, next_q, next_q_dot))
         {
             for (unsigned int i = 0; i < next_q.size(); i++)
             {

@@ -112,10 +112,6 @@ inline void ControllerInterfaceTrajectory::processResult(const KDL::JntArray& q_
         trajectory_msgs::JointTrajectoryPoint traj_point;
         traj_point.positions = pos;
 //        traj_point.velocities = vel;
-//        traj_point.velocities.assign(params_.dof, 0.0);
-//        traj_point.accelerations = accl;
-//        traj_point.accelerations.assign(params_.dof, 0.0);
-//        traj_point.effort.assign(params_.dof, 0.0);
 
         traj_point.time_from_start = ros::Duration(period.toSec());  // Forced time in which the current position has to move to the next position
         trajectory_msgs::JointTrajectory traj_msg;
