@@ -40,6 +40,13 @@ class PInvBySVD : public IPseudoinverseCalculator
          */
         virtual Eigen::MatrixXd calculate(const Eigen::MatrixXd& jacobian) const;
 
+
+        /** Implementation of calculate member
+          * See base for more information on parameters
+        */
+        virtual Eigen::MatrixXd calculate(const TwistControllerParams& params,
+                                          const Eigen::MatrixXd& jacobian) const;
+
         /** Implementation of calculate member
          * See base for more information on parameters
          */

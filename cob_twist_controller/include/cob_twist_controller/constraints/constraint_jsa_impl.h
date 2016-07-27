@@ -55,6 +55,11 @@
 #include <unsupported/Eigen/NumericalDiff>
 #include <eigen_conversions/eigen_kdl.h>
 
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <tf/transform_listener.h>
+#include <tf/tf.h>
+
 /* BEGIN JointLimitAvoidance ************************************************************************************/
 template <typename T_PARAMS, typename PRIO>
 Task_t JointSingularityAvoidance<T_PARAMS, PRIO>::createTask()
@@ -141,7 +146,6 @@ void JointSingularityAvoidance<T_PARAMS, PRIO>::calculate()
 //    {
 //        this->state_.setState(DANGER);  // always active task -> avoid HW destruction.
 //    }
-
 }
 
 template <typename T_PARAMS, typename PRIO>
@@ -190,7 +194,6 @@ void JointSingularityAvoidance<T_PARAMS, PRIO>::calcValue()
 
     this->last_value_ = this->value_;
     this->value_ = mom;
-    ROS_WARN_STREAM("manipulability: " << mom);
 
 //    this->last_value_ = this->value_;
 //    this->value_ = std::abs(w) > ZERO_THRESHOLD ? (1/w) : 1 / DIV0_SAFE;
@@ -250,13 +253,8 @@ void JointSingularityAvoidance<T_PARAMS, PRIO>::calcPartialValues()
     double mom = std::sqrt(std::abs(d));
     double dmom_dq = 0;
 
-
-
-
     Eigen::MatrixXd dJ_dq_J_inverse = J_dot.data * pinv_calc.calculate(jac);
     dmom_dq = -100*mom * dJ_dq_J_inverse.trace();
-
-    ROS_INFO_STREAM("dmom_dq: " << dmom_dq);
 
 //    Eigen::JacobiSVD<Eigen::MatrixXd> svd(dJ_dq_J_inverse, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
@@ -266,6 +264,7 @@ void JointSingularityAvoidance<T_PARAMS, PRIO>::calcPartialValues()
     this->jacobian_data_old_ = jac;
     this->init_ = true;
 }
+
 /* END JointSingularityAvoidance **************************************************************************************/
 
 #endif  // COB_TWIST_CONTROLLER_CONSTRAINTS_CONSTRAINT_JSA_IMPL_H

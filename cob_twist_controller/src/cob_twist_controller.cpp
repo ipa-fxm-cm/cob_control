@@ -394,6 +394,7 @@ void CobTwistController::solveTwist(KDL::Twist twist)
     visualizeTwist(twist);
 
     KDL::JntArray q_dot_ik(chain_.getNrOfJoints());
+    KDL::JntArray q_dot_ik_base(6);
 
     if (twist_controller_params_.kinematic_extension == BASE_COMPENSATION)
     {
@@ -404,7 +405,8 @@ void CobTwistController::solveTwist(KDL::Twist twist)
                                                    pose_,
                                                    twist_odometry_bl_,
                                                    twist,
-                                                   q_dot_ik);
+                                                   q_dot_ik,
+                                                   q_dot_ik_base);
 
     if (0 != ret_ik)
     {

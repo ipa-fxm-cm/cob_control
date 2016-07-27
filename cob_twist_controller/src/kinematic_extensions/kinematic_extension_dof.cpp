@@ -30,6 +30,8 @@
 #include <limits>
 #include <eigen_conversions/eigen_kdl.h>
 #include "cob_twist_controller/kinematic_extensions/kinematic_extension_dof.h"
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
 
 /* BEGIN KinematicExtensionDOF ********************************************************************************************/
 /**

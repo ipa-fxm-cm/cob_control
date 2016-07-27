@@ -60,6 +60,32 @@ Eigen::MatrixXd PInvBySVD::calculate(const Eigen::MatrixXd& jacobian) const
  * This allows to get information about singular values and evaluate them.
  */
 Eigen::MatrixXd PInvBySVD::calculate(const TwistControllerParams& params,
+                                     const Eigen::MatrixXd& jacobian) const
+{
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::VectorXd singularValues = svd.singularValues();
+    Eigen::VectorXd singularValuesInv = Eigen::VectorXd::Zero(singularValues.rows());
+    Eigen::MatrixXd result;
+
+    Eigen::VectorXd lambda_vec = Eigen::VectorXd::Zero(singularValues.size());
+
+    Eigen::MatrixXd S = Eigen::MatrixXd::Zero(singularValues.size(),singularValues.size());
+
+    for(unsigned i = 0; i < singularValues.size(); i++)
+    {
+        lambda_vec(i) = params.damping_gain /( 1+ exp(static_cast <double>(singularValues(i)) + params.damping_delta) / params.damping_slope);
+        S(i,i) = singularValues(i)/(pow(static_cast <double>(singularValues(i)),2) + lambda_vec(i));
+    }
+    result = svd.matrixV() * S * svd.matrixU().transpose();
+
+    return result;
+}
+
+/**
+ * Calculates the pseudoinverse of the Jacobian by using SVD technique.
+ * This allows to get information about singular values and evaluate them.
+ */
+Eigen::MatrixXd PInvBySVD::calculate(const TwistControllerParams& params,
                                      boost::shared_ptr<DampingBase> db,
                                      const Eigen::MatrixXd& jacobian) const
 {
@@ -97,8 +123,6 @@ Eigen::MatrixXd PInvBySVD::calculate(const TwistControllerParams& params,
             S(i,i) = singularValues(i)/(pow(static_cast <double>(singularValues(i)),2) + lambda_vec(i));
         }
 
-        ROS_INFO_STREAM("S: \n" << S);
-        ROS_INFO_STREAM("lambda: \n" << lambda_vec);
         result = svd.matrixV() * S * svd.matrixU().transpose();
     }
     else

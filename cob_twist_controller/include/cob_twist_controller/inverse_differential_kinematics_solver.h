@@ -41,6 +41,9 @@
 #include "cob_twist_controller/constraint_solvers/constraint_solver_factory.h"
 #include "cob_twist_controller/task_stack/task_stack_controller.h"
 
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
+
 /**
 * Implementation of a inverse velocity kinematics algorithm based
 * on the generalize pseudo inverse to calculate the velocity
@@ -74,6 +77,9 @@ public:
         this->limiter_params_ = this->kinematic_extension_->adjustLimiterParams(this->limiter_params_);
 
         this->limiters_.reset(new LimiterContainer(this->limiter_params_));
+
+        base_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("base/command", 1);
+
         this->limiters_->init();
     }
 
@@ -88,7 +94,8 @@ public:
                           const geometry_msgs::Pose pose,
                           const KDL::Twist& twist,
                           const KDL::Twist& v_in,
-                          KDL::JntArray& qdot_out);
+                          KDL::JntArray& qdot_chain_out,
+                          KDL::JntArray& qdot_base_out);
 
     void resetAll(TwistControllerParams params);
 
@@ -105,6 +112,10 @@ private:
     ConstraintSolverFactory constraint_solver_factory_;
 
     TaskStackController_t task_stack_controller_;
+
+    ros::Publisher base_vel_pub_;
+    ros::NodeHandle nh_;
+    tf::TransformListener tf_listener_;
 };
 
 #endif  // COB_TWIST_CONTROLLER_INVERSE_DIFFERENTIAL_KINEMATICS_SOLVER_H
