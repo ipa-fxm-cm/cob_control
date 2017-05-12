@@ -383,9 +383,6 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
     SX x_d = SX::vertcat({pose.position.x, pose.position.y, pose.position.z});
     SX q_d = SX::vertcat({pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z});
 
-
-
-
     // Prevent collision with Base_link
     SX barrier;
 
@@ -401,7 +398,7 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
     }
     ROS_WARN_STREAM("Constraint Balls: " << bvh_points_.size());
 
-    SX R = 0.005*SX::vertcat({1, 1, 1, 1, 1, 1, 1});
+    SX R = 0.01*SX::vertcat({1, 1, 1, 1, 1, 1, 1});
 
 //    // Objective function
 //    SX position = SX::vertcat({1,0,0,0,0,0,0,0});
@@ -421,9 +418,15 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
 //    SX pos1 = SX::vertcat({p_ee(5), p_ee(6), p_ee(7)});
 //    SX dual_barrier = dot(q_d(0) - p_ee(0),q_d(0) - p_ee(0)) + dot(q_d(1) - p_ee(1),q_d(1) - p_ee(1)) + dot(q_d(2) - p_ee(2),q_d(2) - p_ee(2)) + dot(q_d(3) - p_ee(3),q_d(3) - p_ee(3));
 
+    SX q_c_inverse = SX::vertcat({q_c(0), -q_c(1), -q_c(2), -q_c(3)});
+//    q_c_inverse = q_c_inverse / sqrt(dot(q_c_inverse,q_c_inverse));
+
+    SX e_quat= quaternion_product(q_c_inverse,q_d);
+    SX test_quat = 1*dot(1-e_quat,1-e_quat);
 
     SX energy = dot(sqrt(R)*u_,sqrt(R)*u_);
-    SX L = 10 * dot(p_c-x_d,p_c-x_d) + 10 * dot(q_c - q_d, q_c - q_d) + energy + barrier;
+//    SX L = 10 * dot(p_c-x_d,p_c-x_d) + 10 * dot(q_c - q_d, q_c - q_d) + energy + barrier;
+    SX L = 10 * dot(p_c-x_d,p_c-x_d) + 100 * dot(1- e_quat,1 - e_quat) + energy + barrier;
 
     // Create Euler integrator function
     Function F = create_integrator(state_dim_, control_dim_, time_horizon_, num_shooting_nodes_, qdot, x_, u_, L);
@@ -588,6 +591,10 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
 
         visualizeBVH(point, min_dist, i);
     }
+    Function test_quat_f = Function("test_quat", {x_}, {test_quat});
+    SX q_res = test_quat_f(sx_x_new).at(0);
+
+    ROS_WARN_STREAM("Q_error: " << q_res(0));
 
     return q_dot;
 }
