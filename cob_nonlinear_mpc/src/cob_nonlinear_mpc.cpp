@@ -422,11 +422,14 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
 //    q_c_inverse = q_c_inverse / sqrt(dot(q_c_inverse,q_c_inverse));
 
     SX e_quat= quaternion_product(q_c_inverse,q_d);
-    SX test_quat = 1*dot(1-e_quat,1-e_quat);
+
+//    q_c_inverse = q_c_inverse / sqrt(dot(q_c_inverse,q_c_inverse));
+
+    SX error_attitute = SX::vertcat({ e_quat(1), e_quat(2), e_quat(3)});
 
     SX energy = dot(sqrt(R)*u_,sqrt(R)*u_);
 //    SX L = 10 * dot(p_c-x_d,p_c-x_d) + 10 * dot(q_c - q_d, q_c - q_d) + energy + barrier;
-    SX L = 10 * dot(p_c-x_d,p_c-x_d) + 100 * dot(1- e_quat,1 - e_quat) + energy + barrier;
+    SX L = 10 * dot(p_c-x_d,p_c-x_d) + 10 * dot(error_attitute,error_attitute) + energy + barrier;
 
     // Create Euler integrator function
     Function F = create_integrator(state_dim_, control_dim_, time_horizon_, num_shooting_nodes_, qdot, x_, u_, L);
@@ -591,10 +594,6 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
 
         visualizeBVH(point, min_dist, i);
     }
-    Function test_quat_f = Function("test_quat", {x_}, {test_quat});
-    SX q_res = test_quat_f(sx_x_new).at(0);
-
-    ROS_WARN_STREAM("Q_error: " << q_res(0));
 
     return q_dot;
 }
