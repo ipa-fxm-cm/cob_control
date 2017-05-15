@@ -398,6 +398,10 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
     {
         dist = dot(bvh_points_.at(i) - p_c,bvh_points_.at(i) - p_c);
         barrier += exp((min_dist - sqrt(dist))/0.01);
+
+        SX bvh = bvh_points_.at(i);
+        dist = dot(bvh(2),bvh(2));
+        barrier += exp((0.1 - sqrt(dist))/0.01);
     }
     ROS_WARN_STREAM("Constraint Balls: " << bvh_points_.size());
 
