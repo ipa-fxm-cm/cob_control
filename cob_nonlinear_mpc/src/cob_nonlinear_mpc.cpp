@@ -524,7 +524,7 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
     Dict opts;
 
     opts["ipopt.tol"] = 1e-5;
-    opts["ipopt.max_iter"] = 20;
+    opts["ipopt.max_iter"] = 10;
 //    opts["ipopt.hessian_approximation"] = "limited-memory";
 //    opts["ipopt.hessian_constant"] = "yes";
     opts["ipopt.linear_solver"] = "ma27";
@@ -592,6 +592,34 @@ Eigen::MatrixXd CobNonlinearMPC::mpc_step(const geometry_msgs::Pose pose,
 
         visualizeBVH(point, min_dist, i);
     }
+
+
+    visualization_msgs::Marker marker;
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.lifetime = ros::Duration();
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.ns = "preview";
+    marker.header.frame_id = "world";
+
+
+    marker.scale.x = 2;
+    marker.scale.y = 2;
+    marker.scale.z = 0.1;
+
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+
+    marker_array_.markers.clear();
+
+    marker.id = 100;
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker_array_.markers.push_back(marker);
+
+    marker_pub_.publish(marker_array_);
 
     return q_dot;
 }
