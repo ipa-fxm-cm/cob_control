@@ -99,9 +99,19 @@ private:
     std::vector<SX> transform_base_vec_;
     int state_dim_;
     int control_dim_;
-    int num_shooting_nodes_;
+    int discretization_steps_;
     double time_horizon_;
+    double h_;
 
+    int p_order_;
+    int num_finite_elements_;
+    // Coefficients of the collocation equation
+    vector<vector<double> > C_;
+    // Coefficients of the continuity equation
+    vector<double> D_;
+
+    // Coefficients of the quadrature function
+    vector<double> B_;
     visualization_msgs::MarkerArray marker_array_;
 
     // Declare variables
@@ -115,6 +125,7 @@ private:
     SX fk_dual_quat_;
     SX p_;
     tf::TransformListener tf_listener_;
+    SX qdot_;
 
     // Constraints
     vector<double> state_path_constraints_min_, state_path_constraints_max_;
@@ -154,11 +165,11 @@ public:
     void poseCallback(const geometry_msgs::Pose::ConstPtr& msg);
     KDL::JntArray getJointState();
 
-    Eigen::MatrixXd mpc_step(const geometry_msgs::Pose pose,
-                             const KDL::JntArray& state);
+    Eigen::MatrixXd mpc_step(const KDL::JntArray& state,
+                             SX objective);
 
-    Function create_integrator(const unsigned int state_dim, const unsigned int control_dim, const double T,
-                               const unsigned int N, SX ode, SX x, SX u, SX L);
+    SX get_objective(const geometry_msgs::Pose pose,
+                       const KDL::JntArray& state);
 
     void visualizeBVH(const geometry_msgs::Point point, double radius, int id);
 
