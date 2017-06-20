@@ -7,7 +7,7 @@ void BoundingVolume::addCollisionBall(const geometry_msgs::Point point, double r
     marker.lifetime = ros::Duration();
     marker.action = visualization_msgs::Marker::ADD;
     marker.ns = "preview";
-    marker.header.frame_id = "odom_combined";
+    marker.header.frame_id = robot_.root_frame;
 
     marker.scale.x = 2*radius;
     marker.scale.y = 2*radius;
@@ -53,7 +53,7 @@ void BoundingVolume::plotBoundingVolumes(SX x_current)
                 point.y = (double)result(1);
                 point.z = (double)result(2);
 
-                bv_radius = 0.1;
+                bv_radius = 0.12;
                 addCollisionBall(point, bv_radius, id);
                 id++;
             }
@@ -76,7 +76,7 @@ void BoundingVolume::plotBoundingVolumes(SX x_current)
             }
             else
             {
-                bv_radius = 0.1;
+                bv_radius = 0.12;
             }
             addCollisionBall(point, bv_radius, id);
             id++;
@@ -163,6 +163,7 @@ SX BoundingVolume::getOutputConstraints()
             vector<vector<SX>> p1_mat = bv_mat[it_scm->first];
             vector<vector<SX>> p2_mat = bv_mat[scm_collision_links.at(i)];
 
+
             for(int k=0; k<p1_mat.size(); k++)
             {
                 if(it_scm->first == "body")
@@ -174,6 +175,7 @@ SX BoundingVolume::getOutputConstraints()
                     bv_radius = 0.1;
                 }
 
+
                 vector<SX> p1_vec = p1_mat.at(k);
                 for(int m=0; m<p2_mat.size(); m++)
                 {
@@ -181,6 +183,7 @@ SX BoundingVolume::getOutputConstraints()
 
                     SX p1 = SX::vertcat({p1_vec.at(0)});
                     SX p2 = SX::vertcat({p2_vec.at(0)});
+
                     dist = dot(p1 - p2, p1 - p2);
 
                     if(counter == 0)

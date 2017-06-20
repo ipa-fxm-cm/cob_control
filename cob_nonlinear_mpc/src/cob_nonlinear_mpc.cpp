@@ -56,6 +56,15 @@ bool CobNonlinearMPC::initialize()
         ROS_ERROR("Parameter 'joint_names' not set");
         return false;
     }
+
+    if(!nh_.getParam("root_frame", root_frame_))
+    {
+        ROS_ERROR("Parameter 'root_frame' not set");
+        return false;
+    }
+
+    robot_.root_frame = root_frame_;
+
     // nh_nmpc
     int num_shooting_nodes;
     if (!nh_nmpc.getParam("shooting_nodes", num_shooting_nodes))
@@ -250,7 +259,13 @@ void CobNonlinearMPC::FrameTrackerCallback(const geometry_msgs::Pose::ConstPtr& 
 {
     KDL::JntArray state = getJointState();
 
+    ros::Time time = ros::Time::now();
+
     Eigen::MatrixXd qdot = mpc_ctr_->mpc_step(*msg, state);
+
+    ros::Time time_new = ros::Time::now();
+
+    ROS_INFO_STREAM("mpc time: " << (time_new - time).toSec());
 
     geometry_msgs::Twist base_vel_msg;
     std_msgs::Float64MultiArray vel_msg;

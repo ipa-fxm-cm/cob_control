@@ -153,7 +153,9 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     SX error_attitute = SX::vertcat({ e_quat(1), e_quat(2), e_quat(3)});
 
     // L2 norm of the control signal
-    SX R = 1*SX::vertcat({100, 100, 100, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1});
+//    SX R = 1*SX::vertcat({100, 100, 100, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1});
+//    SX R = 1*SX::vertcat({0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1});
+    SX R = 0.1;
     SX energy = dot(sqrt(R)*u_,sqrt(R)*u_);
 
     // L2 norm of the states
@@ -167,9 +169,10 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     barrier = bv_.getOutputConstraints();
 
     SX L = 10*dot(pos_c-pos_target,pos_c-pos_target) + energy + 10 * dot(error_attitute,error_attitute) + barrier;
-    SX phi = 100*dot(pos_c-pos_target,pos_c-pos_target) + 100 * dot(error_attitute,error_attitute);
+    SX phi = 10*dot(pos_c-pos_target,pos_c-pos_target) + 10 * dot(error_attitute,error_attitute) + barrier;
 
     //ROS_INFO("Create Euler integrator function");
+
     Function F = create_integrator(state_dim_, control_dim_, time_horizon_, num_shooting_nodes_, qdot, x_, u_, L);
 
     Function F_terminal = create_integrator(state_dim_, control_dim_, time_horizon_, num_shooting_nodes_, qdot, x_, u_, phi);
@@ -215,8 +218,10 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
 //    opts["ipopt.hessian_constant"] = "yes";
     opts["ipopt.linear_solver"] = "ma27";
     opts["ipopt.print_level"] = 0;
-    opts["print_time"] = true;
-    opts["expand"] = true;  // Removes overhead
+    opts["print_time"] = false;
+    opts["expand"] = false;  // Removes overhead
+
+    ros::Time time = ros::Time::now();
 
     Function solver = nlpsol("nlpsol", "ipopt", nlp, opts);
 
@@ -228,8 +233,12 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     arg["ubg"] = 0;
     arg["x0"] = init_state;
 
+
     res = solver(arg);
 
+    ros::Time time_new = ros::Time::now();
+
+    ROS_INFO_STREAM("NLP time: " << (time_new - time).toSec());
     // Optimal solution of the NLP
     vector<double> V_opt(res.at("x"));
     vector<double> J_opt(res.at("f"));
@@ -259,7 +268,8 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
 
     return q_dot;
 }
-int MPC::init_shooting_node(){
+int MPC::init_shooting_node()
+{
     // Offset in V
     int offset=0;
     X.clear();
@@ -354,6 +364,7 @@ Function MPC::create_integrator(const unsigned int state_dim, const unsigned int
     Q = Q + dt * Q_new;
 
     Function F = Function("F", {X0, U_}, {X_, Q}, {"x0","p"}, {"xf", "qf"});
+
     return F.expand("F");   // Remove overhead
 }
 

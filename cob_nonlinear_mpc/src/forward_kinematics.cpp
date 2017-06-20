@@ -62,7 +62,8 @@ void ForwardKinematics::symbolic_fk(Robot &robot)
         T_BVH fk_transform;
 
         // Todo: There must be a better solution..
-        fk_transform.link = robot.kinematic_chain.getSegment(robot.forward_kinematics.size() - robot.joint_frames.size() -1 +i).getName();
+        fk_transform.link = robot.kinematic_chain.getSegment(robot.forward_kinematics.size() - robot.joint_frames.size() +i).getName();
+
         fk_transform.T = T;
 
         if(pos.z() > 0.1)

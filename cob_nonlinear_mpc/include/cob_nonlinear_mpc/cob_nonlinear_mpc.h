@@ -69,6 +69,7 @@ private:
     std::vector<std::string> transformation_names_;
     std::vector<std::string> transformation_names_base_;
     std::vector<std::string> joint_names;
+    std::string root_frame_;
 
     std::string chain_base_link_;
     std::string chain_tip_link_;
