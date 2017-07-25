@@ -107,6 +107,8 @@ private:
     int num_finite_elements_;
     // Coefficients of the collocation equation
     vector<vector<double> > C_;
+    vector<vector<double> > C2_;
+
     // Coefficients of the continuity equation
     vector<double> D_;
 

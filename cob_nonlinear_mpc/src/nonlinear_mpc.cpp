@@ -62,7 +62,6 @@ void MPC::init()
 
     for(int i = 0; i < control_dim_; i++)
     {
-        ROS_INFO_STREAM("CONTROL DIM: "<<control_dim_);
         u_init_.push_back(0);
     }
 
@@ -77,7 +76,7 @@ void MPC::init()
 
 
     // Degree of interpolating polynomial
-        int d = 3;
+        int d = 2;
         p_order_ = d;
 
         // Size of the finite elements
@@ -103,6 +102,7 @@ void MPC::init()
 
         // Coefficients of the collocation equation
         vector<vector<double> > C(d+1,vector<double>(d+1));
+        vector<vector<double> > C2(d+1,vector<double>(d+1));
 
         // Coefficients of the continuity equation
         vector<double> D(d+1);
@@ -125,15 +125,18 @@ void MPC::init()
 
             // Evaluate the time derivative of the polynomial at all collocation points to get the coefficients of the continuity equation
             Polynomial dp = p.derivative();
+            Polynomial dpp = dp.derivative();
             for(int r=0; r<d+1; ++r)
             {
                 C[j][r] = dp(tau_root[r]);
+                C2[j][r] = dpp(tau_root[r]);
             }
             Polynomial p_int = p.anti_derivative();
             B[j] = p_int(1.0);
         }
 
         C_ = C;
+        C2_ = C2;
         B_ = B;
         D_ = D;
         T_mat_= T_mat;
@@ -215,10 +218,10 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     SX accel = (u2_sym-u1_sym)/h_;
     Function accl = Function("accl", {u1_sym, u2_sym}, {accel});
 
-    SX L_acc = 0.0005*dot(accel, accel);
+    SX L_acc = 0.02*dot(accel, accel);
 
     SX jerk = (a1_sym-accel)/h_;
-    SX L_jerk = 0.0005*dot(jerk, jerk);
+    SX L_jerk = 0.0007*dot(jerk, jerk);
 
 
     // Bounds and initial guess for the control
@@ -263,13 +266,12 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     SX test_v = qk(SX::vertcat({x})).at(0);
 
     //ROS_INFO("L2 norm of the control signal");
-    ROS_INFO_STREAM("ATTITUDE ERROR: " << (double)test_v(0) <<" " << (double)test_v(1) <<" "<< (double)test_v(2) <<" "<< (double)test_v(3));
     this->acceleration_coordination(state);
 
     SX energy = SX::dot(R,u_);
     energy.print(std::cout);
 
-    SX R2 = 0.0001*SX::vertcat({1,1,1,1,1,1,1});
+    SX R2 = 0.005*SX::vertcat({1,1,1,1,1,1,1});
     SX energy2 = dot(sqrt(R2)*u_,sqrt(R2)*u_);
 //    SX energy2 = dot(sqrt(R2)*u_,sqrt(R2)*u_);
 
@@ -277,15 +279,14 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
 
     barrier = bv_.getOutputConstraints();
 //    ROS_INFO("Objective");
-    SX L = 10*dot(pos_c-pos_target,pos_c-pos_target) + 10 * dot(error_attitute,error_attitute) + L_jerk + 10*t_sym*t_sym;
+    SX L = energy2 + 10*dot(pos_c-pos_target,pos_c-pos_target) + 10 * dot(error_attitute,error_attitute) + barrier;
 
-    SX phi = 0*dot(pos_c-pos_target,pos_c-pos_target) +   0*dot(error_attitute,error_attitute)+barrier;
+    SX phi = 0*dot(pos_c-pos_target,pos_c-pos_target) +   0*dot(error_attitute,error_attitute)+ 0*barrier;
     // Offset in V
     int offset=this->init_shooting_node();
 
+    ROS_WARN("TEST");
 
-//    ROS_WARN_STREAM("offset: " << offset);
-//    ROS_WARN_STREAM("NV: " << NV);
 //    ROS_INFO("(Make sure that the size of the variable vector is consistent with the number of variables that we have referenced");
     casadi_assert(offset==NV);
 
@@ -310,10 +311,12 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
         {
             // Expression for the state derivative at the collocation point
             MX xp_jk = 0;
+            MX xpp_jk = 0;
 
             for(int r=0; r<p_order_+1; ++r)
             {
                 xp_jk += C_[r][j]*X_[k][r];
+                xpp_jk += C2_[r][j]*X_[k][r];
             }
 
             // Create an evaluation node
@@ -325,6 +328,7 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
             g.push_back( h_*I_out.at("qdot") - xp_jk );
             // Add objective function contribution
             J += B_[j] * I_out.at("cost")*h_;
+
         }
 
         if(k==num_shooting_nodes_-1)
