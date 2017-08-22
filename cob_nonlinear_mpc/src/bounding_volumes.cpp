@@ -156,7 +156,7 @@ SX BoundingVolume::getOutputConstraints()
     SX barrier;
     int counter = 0;
     double bv_radius;
-
+    double gamma_ = 0.001;
 
     for( it_scm = robot_.self_collision_map_.begin(); it_scm != robot_.self_collision_map_.end(); it_scm++)
     {
@@ -195,12 +195,12 @@ SX BoundingVolume::getOutputConstraints()
 
                         if(counter == 0)
                         {
-                            barrier = exp((0.3 - sqrt(dist))/0.1);
+                            barrier = gamma_/((0.3 - sqrt(dist)) * (0.3 - sqrt(dist)));
                             counter = 1;
                         }
                         else
                         {
-                            barrier += exp((0.3 - sqrt(dist))/0.1);
+                            barrier += gamma_/((0.3 - sqrt(dist)) * (0.3 - sqrt(dist)));
                         }
                     }
                     else
@@ -209,12 +209,12 @@ SX BoundingVolume::getOutputConstraints()
 
                         if(counter == 0)
                         {
-                            barrier = exp((bv_radius - sqrt(dist))/0.1);
+                            barrier = gamma_/((bv_radius - sqrt(dist)) * (bv_radius - sqrt(dist)));
                             counter = 1;
                         }
                         else
                         {
-                            barrier += exp((bv_radius - sqrt(dist))/0.1);
+                            barrier += gamma_/((bv_radius - sqrt(dist)) * (bv_radius - sqrt(dist)));
                         }
                     }
                 }

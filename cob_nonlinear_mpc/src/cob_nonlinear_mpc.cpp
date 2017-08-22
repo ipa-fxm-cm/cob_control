@@ -270,28 +270,39 @@ void CobNonlinearMPC::FrameTrackerCallback(const geometry_msgs::Pose::ConstPtr& 
     ros::Time time_new = ros::Time::now();
 
     ROS_INFO_STREAM("mpc time: " << (time_new - time).toSec());
-//
-//    double CUTOFF = 2;
-//    double RC = 1.0/(CUTOFF*2*3.14);
-//    double dt = (time_new - time).toSec();
-//    double alpha = dt/(RC+dt);
+
+    std::vector<double> q_tmp_orig;
+    for(int j=0; j< qdot.rows(); j++)
+    {
+        q_tmp_orig.push_back((double)qdot(j));
+    }
+    control_vec_orig.push_back(q_tmp_orig);
 
 
-    //    for(int i = 1; i < qdot.rows(); ++i)
-//    {
-//    qdot = qdot_old + (alpha*(qdot- qdot_old));
-//    }
+    double CUTOFF = 12;
+    double RC = 1.0/(CUTOFF*2*3.14);
+    double dt = (time_new - time).toSec();
+    double alpha = dt/(RC+dt);
+
+
+    for(int i = 1; i < qdot.rows(); ++i)
+    {
+        qdot = qdot_old + (alpha*(qdot- qdot_old));
+    }
 
 
     time_vec.push_back((time_new - time).toSec());
 
     std::vector<double> q_c;
+    std::vector<double> q_tmp;
     for(int j=0; j< qdot.rows(); j++)
     {
         q_c.push_back((double)qdot(j));
+        q_tmp.push_back((double)state(j));
     }
 
     control_vec.push_back(q_c);
+    state_vec.push_back(q_tmp);
 
     ros_time.push_back(time_new.toSec());
 
@@ -344,13 +355,93 @@ void CobNonlinearMPC::FrameTrackerCallback(const geometry_msgs::Pose::ConstPtr& 
 
         myfile << "];" << std::endl;
     }
+    myfile << "]" << std::endl;
 
-    myfile << "]; " << std::endl << "plot(t, xdot)";
+    myfile << "xdot_orig = [" << std::endl;
+    /// Get the vectors and write them to .m file
+    for(int i=0; i<control_vec_orig.size(); i++)
+    {
+        std::vector<double> tmp = control_vec_orig.at(i);
+        myfile << "[" << std::endl;
 
+        for(int j=0; j < tmp.size(); j++)
+        {
+            myfile << tmp.at(j) << " ";
+        }
+
+        myfile << "];" << std::endl;
+    }
+    myfile << "]" << std::endl;
+
+
+
+    myfile << "x = [" << std::endl;
+    /// Get the vectors and write them to .m file
+    for(int i=0; i<state_vec.size(); i++)
+    {
+        std::vector<double> tmp = state_vec.at(i);
+        myfile << "[" << std::endl;
+
+        for(int j=0; j < tmp.size(); j++)
+        {
+            myfile << tmp.at(j) << " ";
+        }
+
+        myfile << "];" << std::endl;
+    }
+
+    myfile << "]; " << std::endl << "subplot(2,1,1)" << std::endl;
+    myfile << "plot(t, x)" << std::endl;
+    myfile << "title('Position')" << std::endl;
+    myfile << "grid" << std::endl;
+    myfile << "xlabel('t [s]')" << std::endl;
+    myfile << "ylabel('Position [rad]')" << std::endl;
+
+    myfile << "legend('q_0','q_1','q_2','q_3','q_4','q_5','q_6')" << std::endl;
+
+    myfile << "subplot(2,1,2)" << std::endl;
+    myfile << "plot(t, xdot)" << std::endl;
+    myfile << "title('Velocity')" << std::endl;
+    myfile << "xlabel('t [s]')" << std::endl;
+    myfile << "ylabel('Velocity [rad/s]')" << std::endl;
+    myfile << "grid" << std::endl;
 
     myfile.close();
 
-
+//    // ------------------------ Q PLOT -----------------------------------
+//       name = "/home/chris/Plots/q.m";
+//       charPath = name.c_str();
+//
+//       myfile.open(charPath);
+//
+//       myfile << "t = [" << std::endl;
+//       /// Get the vectors and write them to .m file
+//       for(int i=0; i<ros_time.size(); i++)
+//       {
+//           myfile << ros_time.at(i) << std::endl;
+//       }
+//       myfile << "]; " << std::endl;
+//
+//
+//       myfile << "x = [" << std::endl;
+//       /// Get the vectors and write them to .m file
+//       for(int i=0; i<state_vec.size(); i++)
+//       {
+//           std::vector<double> tmp = state_vec.at(i);
+//           myfile << "[" << std::endl;
+//
+//           for(int j=0; j < tmp.size(); j++)
+//           {
+//               myfile << tmp.at(j) << " ";
+//           }
+//
+//           myfile << "];" << std::endl;
+//       }
+//
+//       myfile << "]; " << std::endl << "plot(t, x)";
+//
+//
+//       myfile.close();
 
 
     geometry_msgs::Twist base_vel_msg;

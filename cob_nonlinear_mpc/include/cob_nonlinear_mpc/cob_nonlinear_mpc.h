@@ -75,7 +75,8 @@ private:
     std::string chain_tip_link_;
 
     std::vector<double> time_vec;
-    std::vector<vector<double> > control_vec;
+    std::vector<vector<double> > control_vec, control_vec_orig;
+    std::vector<vector<double> > state_vec;
     std::vector<double> ros_time;
     Eigen::VectorXd qdot_old;
 

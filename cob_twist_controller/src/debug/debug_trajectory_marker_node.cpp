@@ -54,25 +54,33 @@ class DebugTrajectoryMarker
 public:
     int init()
     {
-        if (!nh_.getParam("root_frame", this->root_frame_))
-        {
-            ROS_ERROR("Failed to get parameter \"root_frame\".");
-            return -1;
-        }
+//        if (!nh_.getParam("root_frame", this->root_frame_))
+//        {
+//            ROS_ERROR("Failed to get parameter \"root_frame\".");
+//            return -1;
+//        }
+//
+//        this->base_link_ = "base_link";
+//
+//        if (!nh_.getParam("chain_tip_link", this->chain_tip_link_))
+//        {
+//            ROS_ERROR("Failed to get parameter \"chain_tip_link\".");
+//            return -2;
+//        }
+//
+//        if (!nh_.getParam("frame_tracker/target_frame", this->target_frame_))
+//        {
+//            ROS_ERROR_STREAM("Please provide a 'frame_tracker/target_frame' parameter in this node's namespace.");
+//            return -3;
+//        }
 
+        this->root_frame_ = "odom_combined";
+        this->chain_tip_link_ = "arm_left_7_link";
+        this->target_frame_ = "arm_left_7_target";
         this->base_link_ = "base_link";
-
-        if (!nh_.getParam("chain_tip_link", this->chain_tip_link_))
-        {
-            ROS_ERROR("Failed to get parameter \"chain_tip_link\".");
-            return -2;
-        }
-
-        if (!nh_.getParam("frame_tracker/target_frame", this->target_frame_))
-        {
-            ROS_ERROR_STREAM("Please provide a 'frame_tracker/target_frame' parameter in this node's namespace.");
-            return -3;
-        }
+//        this->root_frame_ = "world";
+//        this->chain_tip_link_ = "arm_7_link";
+//        this->target_frame_ = "arm_target";
 
         marker_pub_ = this->nh_.advertise<visualization_msgs::MarkerArray>("trajectory_marker", 1, true);
         marker_timer_ = this->nh_.createTimer(ros::Duration(0.1), &DebugTrajectoryMarker::publishMarker, this);
@@ -136,8 +144,7 @@ public:
 
         if (tf_listener_.frameExists(this->base_link_))
         {
-            if (nh_.param("twist_controller/kinematic_extension", 0) == cob_twist_controller::TwistController_BASE_ACTIVE)
-            {
+
                 if (base_marker_.points.size() > 10000)
                 {
                     base_marker_.points.clear();
@@ -145,7 +152,7 @@ public:
                 point = getPoint(this->root_frame_, this->base_link_);
                 base_marker_.points.push_back(point);
                 marker_array.markers.push_back(base_marker_);
-            }
+
         }
 
         if (!marker_array.markers.empty())

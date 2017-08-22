@@ -221,7 +221,7 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     SX L_acc = 0.02*dot(accel, accel);
 
     SX jerk = (a1_sym-accel)/h_;
-    SX L_jerk = 0.0007*dot(jerk, jerk);
+    SX L_jerk = 0.0003*dot(jerk, jerk);
 
 
     // Bounds and initial guess for the control
@@ -271,7 +271,7 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
     SX energy = SX::dot(R,u_);
     energy.print(std::cout);
 
-    SX R2 = 0.005*SX::vertcat({1,1,1,1,1,1,1});
+    SX R2 = 0.005*SX::vertcat({100, 100, 100, 1,1,1,1,1,1,1});
     SX energy2 = dot(sqrt(R2)*u_,sqrt(R2)*u_);
 //    SX energy2 = dot(sqrt(R2)*u_,sqrt(R2)*u_);
 
@@ -279,7 +279,7 @@ Eigen::MatrixXd MPC::mpc_step(const geometry_msgs::Pose pose, const KDL::JntArra
 
     barrier = bv_.getOutputConstraints();
 //    ROS_INFO("Objective");
-    SX L = energy2 + 10*dot(pos_c-pos_target,pos_c-pos_target) + 10 * dot(error_attitute,error_attitute) + barrier;
+    SX L = energy2 + 10*dot(pos_c-pos_target,pos_c-pos_target) + 10 * dot(error_attitute,error_attitute) + barrier + L_jerk;
 
     SX phi = 0*dot(pos_c-pos_target,pos_c-pos_target) +   0*dot(error_attitute,error_attitute)+ 0*barrier;
     // Offset in V
